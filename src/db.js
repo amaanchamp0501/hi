@@ -64,6 +64,17 @@ CREATE TABLE IF NOT EXISTS departments (
   created_by TEXT NOT NULL,
   FOREIGN KEY (week_id) REFERENCES weeks(id)
 );
+
+CREATE TABLE IF NOT EXISTS attendance (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  event_id INTEGER NOT NULL,
+  week_id INTEGER NOT NULL,
+  discord_user_id TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  UNIQUE(event_id, discord_user_id),
+  FOREIGN KEY (event_id) REFERENCES events(id),
+  FOREIGN KEY (week_id) REFERENCES weeks(id)
+);
 `);
 
 function activeWeek() {
@@ -127,6 +138,20 @@ function getCohostEventsForUser(userId) {
     .all(week.id, userId);
 }
 
+function addAttendance(eventId, userId) {
+  const event = db.prepare("SELECT * FROM events WHERE id = ?").get(eventId);
+  if (!event || event.cancelled_at) return false;
+  const info = db.prepare("INSERT OR IGNORE INTO attendance (event_id, week_id, discord_user_id, created_at) VALUES (?, ?, ?, ?)")
+    .run(event.id, event.week_id, userId, new Date().toISOString());
+  return info.changes > 0;
+}
+
+function getAttendanceForUser(userId) {
+  const week = activeWeek();
+  return db.prepare("SELECT a.*, e.event_type, e.event_name FROM attendance a JOIN events e ON e.id = a.event_id WHERE a.week_id = ? AND a.discord_user_id = ? AND e.cancelled_at IS NULL ORDER BY a.id DESC")
+    .all(week.id, userId);
+}
+
 function getDutiesForUser(userId) {
   const week = activeWeek();
   return db.prepare("SELECT * FROM duties WHERE week_id = ? AND discord_user_id = ? ORDER BY id DESC").all(week.id, userId);
@@ -147,6 +172,19 @@ function getAllEvents() {
   return db.prepare("SELECT * FROM events WHERE week_id = ? AND cancelled_at IS NULL ORDER BY id ASC").all(week.id);
 }
 
+function getEventAttendance(eventId) {
+  return db.prepare("SELECT * FROM attendance WHERE event_id = ? ORDER BY id ASC").all(eventId);
+}
+
+function setAnnouncementMessageId(eventId, messageId) {
+  db.prepare("UPDATE events SET announcement_message_id = ? WHERE id = ?").run(messageId, eventId);
+}
+
+function isEventLocked(eventId) {
+  const event = db.prepare("SELECT announcement_message_id FROM events WHERE id = ?").get(eventId);
+  return !event || !event.announcement_message_id;
+}
+
 function archiveAndReset() {
   const current = activeWeek();
   const now = new Date().toISOString();
@@ -161,5 +199,6 @@ function archiveAndReset() {
 module.exports = {
   db, activeWeek, createEvent, cancelEvent, addDuty, addReform, addDepartment,
   getEventsForUser, getCohostEventsForUser, getDutiesForUser, getReformsForUser,
-  getDepartmentsForUser, getAllEvents, archiveAndReset
+  getDepartmentsForUser, addAttendance, getAttendanceForUser, getEventAttendance,
+  setAnnouncementMessageId, isEventLocked, getAllEvents, archiveAndReset
 };
