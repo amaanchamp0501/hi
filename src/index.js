@@ -66,11 +66,11 @@ client.on("interactionCreate", async i => {
         if (!isStaff(i)) return i.reply({content:"You do not have permission to create quota events.",ephemeral:true});
         const channel=i.options.getChannel("channel"), host=i.options.getMember("host"), cohost=i.options.getMember("cohost"), supervisor=i.options.getMember("supervisor");
         const type=i.options.getString("type"), name=i.options.getString("name");
-        const eligibleCohost = cohost?.roles.cache.has(config.cohostQuotaRoleId) ? cohost.id : null;
+        const eligibleCohost = cohost?.id || null;
         const event=db.createEvent({hostId:host.id,cohostId:eligibleCohost,supervisorId:supervisor?.id,eventType:type,eventName:name,channelId:channel.id,createdBy:i.user.id});
         const embed=new EmbedBuilder().setTitle(`Crimson Imperium — ${name}`).setDescription(`**Event Type:** ${type}\n**Host:** <@${host.id}>\n**Co-Host:** ${cohost ? `<@${cohost.id}>` : "None"}\n**Supervisor:** ${supervisor ? `<@${supervisor.id}>` : "None"}\n\n**Event ID:** \`#${event.id}\`\nThis event has been recorded for the weekly quota.`).setFooter({text:"Crimson Imperium Event System"}).setTimestamp();
         await channel.send({embeds:[embed]});
-        return i.reply({content:`Event **#${event.id}** announced in ${channel}. Host credit recorded.${cohost ? (eligibleCohost ? " Eligible co-host credit recorded." : " Co-host is not eligible for quota credit because they do not have the required role.") : ""}`,ephemeral:true});
+        return i.reply({content:`Event **#${event.id}** announced in ${channel}. Host credit recorded.${cohost ? " Co-host credit recorded." : ""}`,ephemeral:true});
       }
       if (sub === "cancel") {
         if (!isStaff(i)) return i.reply({content:"You do not have permission to cancel events.",ephemeral:true});
