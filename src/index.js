@@ -1,5 +1,5 @@
 require("dotenv").config();
-const { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require("discord.js");
+const { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, AttachmentBuilder } = require("discord.js");
 const config = require("./config");
 const db = require("./db");
 
@@ -43,7 +43,7 @@ async function registerCommands() {
         .addUserOption(o => o.setName("cohost").setDescription("Optional co-host"))
         .addUserOption(o => o.setName("supervisor").setDescription("Optional supervisor"))
         .addChannelOption(o => o.setName("channel").setDescription("Announcement channel").setRequired(true)))
-      .addSubcommand(s => s.setName("cancel").setDescription("Cancel a recorded event").addIntegerOption(o => o.setName("id").setDescription("Event ID").setRequired(true))),
+      .addSubcommand(s => s.setName("cancel").setDescription("Cancel a recorded event").addIntegerOption(o => o.setName("id").setDescription("Event ID").setRequired(true)))\n      .addSubcommand(s => s.setName("attend").setDescription("Record attendance").addIntegerOption(o => o.setName("id").setDescription("Event ID").setRequired(true)).addUserOption(o => o.setName("user").setDescription("Member").setRequired(true))),
     new SlashCommandBuilder().setName("quota").setDescription("View or manage weekly quotas")
       .addSubcommand(s => s.setName("view").setDescription("View a member's quota").addUserOption(o => o.setName("user").setDescription("Member")))
       .addSubcommand(s => s.setName("all").setDescription("View everyone with a configured quota role"))
@@ -69,10 +69,10 @@ client.on("interactionCreate", async i => {
         const eligibleCohost = cohost?.id || null;
         const event=db.createEvent({hostId:host.id,cohostId:eligibleCohost,supervisorId:supervisor?.id,eventType:type,eventName:name,channelId:channel.id,createdBy:i.user.id});
         const embed=new EmbedBuilder().setTitle(`Crimson Imperium — ${name}`).setDescription(`**Event Type:** ${type}\n**Host:** <@${host.id}>\n**Co-Host:** ${cohost ? `<@${cohost.id}>` : "None"}\n**Supervisor:** ${supervisor ? `<@${supervisor.id}>` : "None"}\n\n**Event ID:** \`#${event.id}\`\nThis event has been recorded for the weekly quota.`).setFooter({text:"Crimson Imperium Event System"}).setTimestamp();
-        await channel.send({embeds:[embed]});
+        const sent = await channel.send({embeds:[embed], components:[new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId(`cr_lock_${event.id}`).setLabel("Lock Event").setStyle(ButtonStyle.Secondary))]});\n        db.setAnnouncementMessageId(event.id, sent.id);
         return i.reply({content:`Event **#${event.id}** announced in ${channel}. Host credit recorded.${cohost ? " Co-host credit recorded." : ""}`,ephemeral:true});
       }
-      if (sub === "cancel") {
+      if (sub === "attend") {\n        if (!isStaff(i)) return i.reply({content:"You do not have permission to record attendance.",ephemeral:true});\n        const ok=db.addAttendance(i.options.getInteger("id"),i.options.getMember("user").id);\n        return i.reply({content:ok?"Attendance recorded.":"Event not found, cancelled, or attendance already recorded.",ephemeral:true});\n      }\n      if (sub === "cancel") {
         if (!isStaff(i)) return i.reply({content:"You do not have permission to cancel events.",ephemeral:true});
         const ok=db.cancelEvent(i.options.getInteger("id"));
         return i.reply({content:ok ? "Event cancelled and removed from active quota totals." : "Event not found or already cancelled.",ephemeral:true});
