@@ -51,7 +51,7 @@ module.exports = {
     {
       name: "LOWCOM",
       requirements: [
-        { type: "event", eventTypes: ["Raid"], label: "Raids", target: 3 },
+        { type: "event", eventTypes: ["Raid"], label: "Raids", target: 3, countAttendance: true },
         { type: "event", eventTypes: ["CT", "FT", "PT"], label: "Main Training", target: 1 }
       ]
     },
