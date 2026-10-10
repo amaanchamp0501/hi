@@ -1,8 +1,8 @@
 {
-  "name": "crimson-imperium-quota-bot",
+  "name": "event-host-bot",
   "version": "1.0.0",
-  "private": true,
-  "description": "Weekly event and reform quota tracker for Crimson Imperium.",
+  "private": false,
+  "description": "A configurable multi-server Discord event hosting and quota bot.",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js"
