@@ -28,7 +28,7 @@ client.on("interactionCreate",async i=>{
    const parts=i.customId.split("_"),kind=parts[1],eventId=Number(parts[2]),e=db.getEvent(eventId);
    if(!e||e.guild_id!==i.guildId)return i.reply({content:"This event could not be found in this server.",ephemeral:true});
    if(kind==="join"){const ok=db.joinEvent(eventId,i.user.id);return i.reply({content:ok?"You're on the attendee list!":"This event is locked or you already joined.",ephemeral:true});}
-   if(kind==="lock"){if(!canManage(i))return i.reply({content:"Only server managers can lock events.",ephemeral:true});db.toggleLock(eventId,true);return i.update({embeds:[announcement(db.getEvent(eventId))],components:[buttons(db.getEvent(eventId))]});}
+   if(kind==="lock"){if(!canManage(i)&&e.host_id!==i.user.id&&e.cohost_id!==i.user.id)return i.reply({content:"Only the event host, co-host, or a server manager can lock this event.",ephemeral:true});db.toggleLock(eventId,true);return i.update({embeds:[announcement(db.getEvent(eventId))],components:[buttons(db.getEvent(eventId))]});}
   }
   if(!i.isChatInputCommand()||!i.guildId)return;
   const settings=db.ensureGuild(i.guildId);
@@ -51,8 +51,8 @@ client.on("interactionCreate",async i=>{
     return i.reply({content:"Event **#"+e.id+"** announced in "+channel+". Host"+(cohost?" and co-host":"")+" receive quota credit; supervisor does not.",ephemeral:true});
    }
    if(sub==="lock"||sub==="unlock"){
-    if(!canManage(i))return i.reply({content:"Only server managers can lock or unlock events.",ephemeral:true});
     const e=db.getEvent(i.options.getInteger("id"));if(!e||e.guild_id!==i.guildId)return i.reply({content:"Event not found in this server.",ephemeral:true});
+    if(!canManage(i)&&(sub==="unlock"||e.host_id!==i.user.id&&e.cohost_id!==i.user.id))return i.reply({content:"Only the event host/co-host can lock it; only server managers can unlock it.",ephemeral:true});
     db.toggleLock(e.id,sub==="lock");await refreshAnnouncement(i.guild,db.getEvent(e.id));return i.reply({content:"Event #"+e.id+(sub==="lock"?" locked.":" unlocked."),ephemeral:true});
    }
   }
